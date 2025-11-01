@@ -62,7 +62,6 @@ users_db = load_users()
 # === ПОМОЩНИКИ ===
 def has_access(user_id): return True
 def is_admin(user_id): return user_id in users_db["admins"]
-
 def input_phone(text):
     if re.match(r"^\d{11}$", text) and text.startswith("7"):
         return f"+{text}"
@@ -288,16 +287,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if str(user_id) not in users_db["users"]:
         users_db["users"][str(user_id)] = {}
         save_users()
-
     caption = "Psycho Bot\nВыберите функцию:"
     photo_path = "icon.png" if os.path.exists("icon.png") else None
-
     if photo_path:
         with open(photo_path, "rb") as photo:
             msg = await update.message.reply_photo(photo, caption=caption, reply_markup=get_main_menu())
     else:
         msg = await update.message.reply_text(caption, reply_markup=get_main_menu())
-
     user_active_msg[user_id] = msg.message_id
 
 # === КНОПКИ ===
@@ -307,7 +303,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     chat_id = query.message.chat_id
     msg_id = query.message.message_id
-
     if query.data == "back_to_menu":
         caption = "Psycho Bot\nВыберите функцию:"
         photo_path = "icon.png" if os.path.exists("icon.png") else None
@@ -336,7 +331,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 msg = await context.bot.send_message(chat_id, caption, reply_markup=get_main_menu())
             user_active_msg[user_id] = msg.message_id
         return
-
     prompts = {
         "phone": "Введите номер без + (11 цифр, начиная с 7):",
         "vk": "Введите VK ID, ссылку или ФИО:",
@@ -346,7 +340,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     }
     prompt_text = prompts.get(query.data, "Неизвестная команда")
     photo_path = "icon.png" if os.path.exists("icon.png") else None
-
     try:
         if photo_path:
             with open(photo_path, "rb") as photo:
@@ -370,7 +363,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             msg = await context.bot.send_message(chat_id, prompt_text)
         user_active_msg[user_id] = msg.message_id
-
     context.user_data.setdefault(user_id, {})["state"] = query.data
 
 # === ОТПРАВКА РЕЗУЛЬТАТА С search.png ===
@@ -378,11 +370,9 @@ async def send_result(context, chat_id, user_id, result_text):
     msg_id = user_active_msg.get(user_id)
     search_photo_path = "search.png" if os.path.exists("search.png") else ("icon.png" if os.path.exists("icon.png") else None)
     parts = split_message(result_text)
-
     for i, part in enumerate(parts):
         is_last = i == len(parts) - 1
         markup = get_back_menu() if is_last else None
-
         try:
             if search_photo_path and i == 0 and len(part) <= 1024:
                 with open(search_photo_path, "rb") as photo:
@@ -422,7 +412,6 @@ async def handle_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     state = context.user_data.get(user_id, {}).get("state")
     if not state:
         return
-
     result = ""
     if state == WAITING_PHONE:
         full = input_phone(text)
@@ -437,15 +426,13 @@ async def handle_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif state == WAITING_EMAIL:
         valid_email = input_email(text)
         result = search_email(valid_email) if valid_email else "Неверный email"
-
     context.user_data[user_id].pop("state", None)
-
-    # УДАЛЕНИЕ СООБЩЕНИЯ ПОЛЬЗОВАТЕЛЯ
+    # Удаление сообщения пользователя
     try:
         await user_message.delete()
     except Exception as e:
         print(f"[DELETE USER MSG] {e}")
-
+    # Отправка результата
     await send_result(context, update.message.chat_id, user_id, result)
 
 # === АДМИНКА ===
@@ -506,18 +493,14 @@ async def cancel_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # === ЗАПУСК ===
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("admin", admin_panel))
     app.add_handler(CommandHandler("stats", stats))
     app.add_handler(CommandHandler("broadcast", broadcast))
-
     app.add_handler(CallbackQueryHandler(button_handler, pattern="^(phone|vk|sherlock|hlr|email|back_to_menu)$"))
     app.add_handler(CallbackQueryHandler(confirm_broadcast, pattern="^confirm_broadcast$"))
     app.add_handler(CallbackQueryHandler(cancel_broadcast, pattern="^cancel_broadcast$"))
-
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_input))
-
     print("Psycho Bot — ЗАПУЩЕН! (Полный код + админка + удаление сообщений)")
     app.run_polling()
 
